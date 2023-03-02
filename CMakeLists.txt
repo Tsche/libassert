@@ -6,7 +6,6 @@ project(
   LANGUAGES CXX
 )
 
-option(ASSERT_BUILD_TESTS "Enables tests" OFF)
 option(ASSERT_DECOMPOSE_BINARY_LOGICAL "Enables expression decomposition of && and ||" OFF)
 option(ASSERT_LOWERCASE "Enables assert alias for ASSERT" OFF)
 option(ASSERT_USE_MAGIC_ENUM "Use the MagicEnum library to print better diagnostics for enum classes" ON)
@@ -17,6 +16,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(GNUInstallDirs)
 add_library(assert src/assert.cpp)
+add_library(assert::assert ALIAS assert)
 
 target_include_directories(
   assert
@@ -36,13 +36,16 @@ set_target_properties(
   PROPERTIES
   CXX_STANDARD_REQUIRED TRUE
   CXX_EXTENSIONS OFF
+  DEFINE_SYMBOL LIBASSERT_EXPORTS
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN TRUE
 )
 
 target_compile_options(
   assert
   PRIVATE
   $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Werror=return-type -Wshadow>
-  $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX /permissive->
+  $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX /permissive- /utf-8 /wd4251>
 )
 
 target_link_libraries(
@@ -51,6 +54,10 @@ target_link_libraries(
   $<$<CXX_COMPILER_ID:MSVC>:dbghelp>
   ${CMAKE_DL_LIBS}
 )
+
+if(BUILD_SHARED_LIBS)
+  target_compile_definitions(assert INTERFACE LIBASSERT_API=LIBASSERT_IMPORT)
+endif()
 
 if(ASSERT_DECOMPOSE_BINARY_LOGICAL)
   target_compile_definitions(assert PUBLIC ASSERT_DECOMPOSE_BINARY_LOGICAL)
@@ -69,26 +76,13 @@ if(NOT "${ASSERT_FAIL}" STREQUAL "")
 endif()
 
 
-if(CMAKE_BUILD_TYPE STREQUAL "")
-  message(FATAL_ERROR "Setting CMAKE_BUILD_TYPE is required")
-endif()
-
-if(ASSERT_BUILD_TESTS)
-  include(CTest)
-  add_test(
-    NAME run-tests.py
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests
-    COMMAND
-    python3 run-tests.py --build --build_type=${CMAKE_BUILD_TYPE} --compiler=${CMAKE_CXX_COMPILER_ID}
-  )
-endif()
-
 if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(CMakePackageConfigHelpers)
 
   install(
     TARGETS assert
     EXPORT assert_targets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
