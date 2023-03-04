@@ -38,6 +38,13 @@ set_target_properties(
   CXX_EXTENSIONS OFF
 )
 
+set_target_properties(
+  assert 
+  PROPERTIES 
+  WINDOWS_EXPORT_ALL_SYMBOLS 
+  TRUE
+)
+
 target_compile_options(
   assert
   PRIVATE
